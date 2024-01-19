@@ -1,0 +1,7 @@
+# Ignore everything in the data folder
+data/*
+
+# Ignore specific file wherever it is
+df_mutfiles.csv
+
+
