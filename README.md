@@ -7,7 +7,7 @@ There are two main parts to generating these estimates: 1) generating mutation b
 
 ##### Generating mutation by ROSETTA code matrices
 
-The `data/` folder is not tracked on GitHub because it is too large (~20GB). It is available as a .zip file on Zenodo (here)[]. Download it from the link and unzip it in the `aa-mut-counter` folder. 
+The `data/` folder is not tracked on GitHub because it is too large (~20GB). It is available as a .zip file on Zenodo: https://zenodo.org/records/10569725. Download it from the link and unzip it in the `aa-mut-counter` folder. 
 
 cBioPortal exome sequencing data is found in `data/cbioportal_raw_EXOME139` which is downloadable using `data/cbioportal_raw_EXOME139/Raw_Studies_Downloader.py` and the associated clinical data with ROSETTA code mapped for each patient is found for each study in the folder `data/clinical`. 
 
