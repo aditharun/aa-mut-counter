@@ -1,0 +1,3 @@
+p.Val600Glu
+p.Val600Lys
+p.Gly12Cys
