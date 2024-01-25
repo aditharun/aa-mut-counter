@@ -22,6 +22,6 @@ Now, suppose you want to generate counts for a list of specific mutations. Defin
 
 ##### Performing Epidemio-Genomic reweighting
 
-Go to `code/` and run `Rscript reweighting.R` and it will create a folder `../results/Cys/` with the results, and master tables. Figures and other materials can be run by `Rscript fig1.R`, `Rscript fig2.R`, `Rscript fig3.R` and `Rscript create-tables.R`. 
+Go to `code/` and run `Rscript reweighting.R` and it will create a folder `../analyses/Cys/` with the results, and master tables. Figures and other materials can be run by `Rscript fig1.R`, `Rscript fig2.R`, `Rscript fig3.R` and `Rscript create-tables.R`. 
 
 Please reach out at adith.3.arun@gmail.com with questions or comments. 
