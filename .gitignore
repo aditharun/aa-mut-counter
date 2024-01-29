@@ -4,4 +4,5 @@ data/*
 # Ignore specific file wherever it is
 df_mutfiles.csv
 
-
+#Ignore amino acid generalizable file
+code/run-analyses-from-raw-data.R

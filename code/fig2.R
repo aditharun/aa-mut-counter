@@ -3,23 +3,26 @@ library(readxl)
 
 set.seed(123)
 
-outdir <- "../analyses/Cys"
+args = commandArgs(trailingOnly=TRUE)
+amino_acid <- args[1]
+amino_acid_long <- args[2]
+
+outdir <- paste0("../analyses/", amino_acid)
+
 if (!dir.exists(outdir)){
 	dir.create(outdir, recursive = TRUE)
 }
 
-gene <- file.path(outdir, "gene-rates.rds") %>% readRDS()
+mut <- file.path(outdir, "mut-rates.rds") %>% readRDS()
+
+mut.bar <- mut %>% arrange(desc(pct_tcga)) %>% slice(1:50) 
+mut.bar <- mut.bar %>% mutate(label_text = paste0(str_sub(gene, 1, -2), " (", gsub("(.*)\\.", "", hugo) %>% str_sub(., 1, -4) %>% str_replace(., "([[:alpha:]])(\\d)", "\\1 \\2"), ")"))
+
+mut.bar$label_text <- factor(mut.bar$label_text, levels = mut.bar$label_text[order(mut.bar$pct_us, decreasing = TRUE)])
+
+mutbar_second_y_axis_label <- paste0("Estimated Number of New Cases In 2023\nWith Acquired ", amino_acid_long ," Mutations In U.S.")
+
+x2c_mut_bar <- mut.bar %>% ggplot(aes(x=label_text, y=pct_us)) + geom_bar(position = position_dodge(width = 5), stat="identity",color="grey50", fill="grey50", alpha = 0.75) + theme_minimal() + theme(panel.grid = element_blank(), panel.border = element_rect(color="black", fill="transparent")) + geom_hline(yintercept = c(0.5, 1, 1.5), linetype="dashed", color="grey60") + scale_y_continuous(name = "Estimated Mutation Proportion\nfor U.S. Population (%)", limits=c(0,1.8), breaks=seq(0,2,0.5), sec.axis = sec_axis(~ . * 0.01 * 1958310, name = mutbar_second_y_axis_label, breaks = seq(0, 30000, 30000/6))) + theme(axis.ticks = element_line(color="black")) + xlab("Top 50 Point Mutations")  + theme(axis.title = element_text(size=18), axis.text.y = element_text(size = 16), axis.text.x = element_text(size = 12, angle = 70, hjust = 1)) 
 
 
-df <- gene %>% mutate(gene = str_sub(gene, 1, -2)) %>% filter(gene %in% c("BRAF", "FGFR3", "TP53", "IDH1", "GNAS", "FBXW7", "CTNNB1", "DNMT3A")) %>% magrittr::set_colnames(c("gene", "EG", "NPC", "LB", "UB"))
-
-fig2a <- df %>% select(gene, EG, NPC) %>% pivot_longer(-gene) %>% mutate(value = as.numeric(value), gene = factor(gene, levels = df %>% mutate(EG = as.numeric(EG)) %>% arrange(desc(EG)) %>% pull(gene))) %>% ggplot(aes(x=gene, y=value, fill=name, group=name)) + geom_bar(stat = "identity", position="dodge") + scale_fill_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemiologic-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2)) + theme_minimal() + theme(panel.background = element_blank(), panel.border = element_rect(color = "black", fill = "transparent"), panel.grid = element_blank()) + theme(axis.text = element_text(size =13), axis.title = element_text(size = 16)) + xlab("Gene") + ylab("Mutation Rate (%)") + theme(axis.ticks =  element_line(color = "black")) + theme(legend.title = element_blank()) + theme(legend.text = element_text(size = 14), legend.position = "bottom") + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
-
-
-fig2b <- df %>% type.convert(as.is = TRUE) %>% ggplot(aes(x=NPC, y=EG)) + geom_point(size = 2.5)+ theme_minimal() + theme(panel.background = element_blank(), panel.border = element_rect(color = "black", fill = "transparent"), panel.grid = element_blank()) + theme(axis.text = element_text(size =13), axis.title = element_text(size = 16)) + xlab("NPC Mutation Rate (%)") + ylab("EG Mutation Rate (%)") + theme(axis.ticks =  element_line(color = "black")) + theme(legend.title = element_blank()) + theme(legend.text = element_text(size = 14), legend.position = "top") + geom_abline(slope = 1, intercept = 0, color = "grey70", linetype = "dashed", linewidth = 0.8) + scale_x_continuous(breaks = scales::pretty_breaks(n = 5)) + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
-
-cowplot::plot_grid(fig2a, fig2b, labels = c("A", "B"), label_size = 25, nrow = 1, rel_widths = c(1.5, 1)) %>% ggsave(., filename = file.path(outdir, "fig2.pdf"), device = cairo_pdf, units = "in", height = 5, width = 11)
-
-df <- df %>% type.convert(as.is = TRUE)
-cor.test(df$NPC, df$EG)
-#p-value = 2.308e-7 and cor = 0.995 and 95% CI = 0.97 - 0.99 for Cys
+ggsave(plot = x2c_mut_bar, filename = file.path(outdir, "fig2.pdf"), device = cairo_pdf, units = "in", height = 8, width = 15)

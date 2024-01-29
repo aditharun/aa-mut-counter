@@ -3,7 +3,11 @@ library(readxl)
 
 set.seed(123)
 
-outdir <- "../analyses/Cys"
+args = commandArgs(trailingOnly=TRUE)
+amino_acid <- args[1]
+
+outdir <- paste0("../analyses/", amino_acid)
+
 if (!dir.exists(outdir)){
 	dir.create(outdir, recursive = TRUE)
 }
@@ -27,7 +31,7 @@ seer.df <- "../data/seer-abundances.xlsx" %>% read_excel() %>% magrittr::set_col
 
 
 #by mutation
-aa_tcga <- "../results/counts-Cys.txt" %>% read_table()
+aa_tcga <- paste0("../results/counts-", amino_acid, ".txt") %>% read_table()
 
 #by gene (not important for getting total cases)
 all_cases <- "../results/all-muts/all-counts-matrix.txt" %>% read_table() %>% filter(Hugo_Symbol == "Total")
@@ -50,7 +54,7 @@ aa_tcga.df <- aa_tcga %>% filter(Hugo_Symbol != "Total") %>% select(-All)
 
 ### WRITE OUT FILE ####
 #What fraction of cases for a given ROSETTA code have at least 1 mutation of interest?
-total_cases$Hugo_Symbol <- "cases with >= 1 acquired cysteine"
+total_cases$Hugo_Symbol <- paste0("cases with >= 1 acquired ", amino_acid)
 all_cases_subset$Hugo_Symbol <- "total sequenced cases"
 colnames(all_cases_subset)[1] <- "status"
 colnames(total_cases)[1] <- "status"
@@ -102,20 +106,9 @@ mut <- tcga.muts %>% left_join(total %>% select(rosetta, weight.tot, all), by=c(
 
 gene <- tcga.gene %>% left_join(total %>% select(rosetta, weight.tot, all), by=c("rosetta"="rosetta")) %>% group_by(gene) %>% summarize(pct_us = sum(weight.gene) / sum(weight.tot), pct_tcga = sum(net_count) / unique(all), pct_lb = sum(weight.lb) / sum(weight.tot), pct_ub = sum(weight.ub) / sum(weight.tot) ) %>% mutate(across(where(is.double), ~ . * 100))
 
-### WRITE OUT FILES ###
-# What is the naive pan-cancer mutation rate and epidemiologically-informed rate for each specific mutation (muts.df) and each gene (genes.df)
 
 saveRDS(mut, file.path(outdir, "mut-rates.rds"))
 saveRDS(gene, file.path(outdir, "gene-rates.rds"))
-
-muts.df <- mut %>% mutate(diff=(pct_us - pct_tcga)) %>% arrange(desc(abs(diff))) %>% mutate(gene = str_sub(gene, 1, -2)) %>% mutate(aa_change = gsub("(.*)\\.", "", hugo)) %>% mutate(mutation = paste0(gene, ".", aa_change)) %>% select(-hugo) %>% relocate(mutation, gene, aa_change, pct_tcga, pct_us, pct_lb, pct_ub, diff) %>% magrittr::set_colnames(c("mutation", "gene", "amino acid change", "Unweighted pan-cancer mutation rate (%)", "US population mutation rate (%)", "lower bound mutation rate in US pop (%)", "upper bound mutation rate in US pop (%)", "US - Unweighted pan-cancer Mutation Rate"))
-
-genes.df <- gene %>% mutate(diff=(pct_us - pct_tcga)) %>% arrange(desc(abs(diff))) %>% mutate(gene = str_sub(gene, 1, -2)) %>% relocate(gene, pct_tcga, pct_us, pct_lb, pct_ub) %>% magrittr::set_colnames(c("gene", "Unweighted pan-cancer mutation rate (%)", "US population mutation rate (%)", "lower bound mutation rate in US pop (%)", "upper bound mutation rate in US pop (%)", "US - Unweighted pan-cancer Mutation Rate"))
-
-
-writexl::write_xlsx(muts.df, file.path(outdir, "supplement-mutation-rates.xlsx"))
-
-writexl::write_xlsx(genes.df, file.path(outdir, "supplement-gene-rates.xlsx"))
 
 
 #which cancers contribute to the mutation rates for each mutation? which cancers have the most mutations of a given type (e.g., kras g12c)

@@ -3,7 +3,11 @@ library(readxl)
 
 set.seed(123)
 
-outdir <- "../analyses/Cys"
+args = commandArgs(trailingOnly=TRUE)
+amino_acid <- args[1]
+
+outdir <- paste0("../analyses/", amino_acid)
+
 if (!dir.exists(outdir)){
 	dir.create(outdir, recursive = TRUE)
 }
