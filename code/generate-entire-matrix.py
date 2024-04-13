@@ -21,17 +21,14 @@ list_study_dirs=['all_phase2_target_2018_pub','acbc_mskcc_2015','acc_tcga_pan_ca
 
 print('Number of Studies included:',len(list_study_dirs),'\n The following studies are not present in cbioportal_raw_EXOME139/ folder. Please download by running script provided in the folder: ',[istudy for istudy in list_study_dirs if not os.path.isdir(os.path.join(cwd,istudy))]) # Second value should be null vector to ensure all studies are downloaded and unzipped in current directory.
 
-
-
-
-#Find the clinical sample data for each of the studies, and their filepaths
+# Import Clinical Data
+# when clinical folder defined in cwd0 directory
 cldirlist0=[os.path.join(cwd0,'data/clinical',idir) for idir in os.listdir(os.path.join(cwd0,"data/clinical")) if os.path.isdir(os.path.join(cwd0,'data/clinical',idir))]
 cldirlist1=[os.path.join(idir,idir1) for idir in cldirlist0 for idir1 in os.listdir(idir)]
 
 # limit to included studies
 clinical_file_list=[os.path.join(idir,'data_clinical_sample_v2.txt') for idir in cldirlist1 if any([row in idir for row in list_study_dirs])] 
 
-#
 N_LongiSamples={}
 list_df_clinical=[]
 for istudypath in clinical_file_list:
@@ -39,8 +36,6 @@ for istudypath in clinical_file_list:
     df_clinical_istudy=pd.read_csv(istudypath,sep='\t',comment='#',dtype=str)
     # Remove longitudinal samples
     N_LongiSamples[Study_ID]=(len(df_clinical_istudy.PATIENT_ID)-setlen(df_clinical_istudy.PATIENT_ID)) # Record how many longitudinal samples are removed within every study
-
-    #we choose to keep the patient sample, if there are duplicates, that occurs first in the sample metadata file
     df_clinical_istudy=df_clinical_istudy.drop_duplicates(subset='PATIENT_ID',keep='first')
     df_clinical_istudy['STUDY_ID']=Study_ID
     keepcols=['STUDY_ID','PATIENT_ID','SAMPLE_ID','CODE'] # These columns are ALWAYS present in the curated clinical file.
@@ -68,8 +63,6 @@ for icode in histcodes:
     # Find all patient IDs within a given hist code
     df_patient=df_clinical[df_clinical.CODE==icode]
     # Find repeating patient IDs
-
-    #START HERE
     for pid in set(df_patient.PATIENT_ID.values):
         if sum(df_patient.PATIENT_ID==pid)>1:
             df_tmp_remove=df_patient[df_patient.PATIENT_ID==pid].sort_values('Year',ascending=False)
@@ -279,6 +272,3 @@ dfC=dfC[colist]
 dfC.to_csv(os.path.join(cwd_results,'all-counts-matrix.txt'),header=True,sep='\t',index_label='Hugo_Symbol')
 
 print('Done. Results stored in all-counts-matrix.txt')
-
-
-
