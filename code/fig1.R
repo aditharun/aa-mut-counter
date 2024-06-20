@@ -95,13 +95,16 @@ gene <- tcga.gene %>% left_join(total %>% select(rosetta, weight.tot, all), by=c
 
 df <- mut %>% mutate(gene = str_sub(gene, 1, -2)) %>% mutate(mutation = gsub("(.*)\\.", "", hugo)) %>% relocate(gene, mutation) %>% select(-hugo) %>% mutate(label_text = paste0(gene, "\n(", mutation, ")")) %>% select(-c(gene, mutation))
 
-df <- df %>% select(label_text, pct_us, pct_tcga) %>% arrange(desc(pct_us)) %>% magrittr::set_colnames(c("mutation", "EG", "NPC")) %>% pivot_longer(-mutation) 
+df <- df %>% select(label_text, pct_us, pct_tcga, pct_lb, pct_ub) %>% arrange(desc(pct_us)) %>% magrittr::set_colnames(c("mutation", "EG", "NPC", "LB", "UB")) %>% mutate(idx = 1:n()) %>% pivot_longer(-c(mutation, LB, UB, idx)) 
 
-mut.levels <- df$mutation %>% unique()
-df$mutation <- factor(df$mutation, levels = mut.levels)
+df <- df %>% mutate(LB = ifelse(name == "EG", LB, NA), UB = ifelse(name == "EG", UB, NA))
 
-fig1b <- df %>% ggplot(aes(x=mutation, y=value, fill=name, group=name)) + geom_bar(stat = "identity", position="dodge") +  scale_fill_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemiologic-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2)) + theme_minimal() + theme(panel.background = element_blank(), panel.border = element_rect(color = "black", fill = "transparent"), panel.grid = element_blank()) + theme(axis.text = element_text(size =12), axis.title = element_text(size = 16)) + xlab("") + ylab("Mutation Rate (%)") + theme(axis.ticks =  element_line(color = "black")) + theme(legend.title = element_blank()) + theme(legend.text = element_text(size = 14), legend.position = "bottom")  + scale_y_continuous(breaks = scales::pretty_breaks(n=5))
 
+
+
+fig1b <- df %>% ggplot(., aes(fill = name, y = value, color = name, group = name, x = idx)) + geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.8, alpha = 0.65) + theme_minimal() + theme(panel.background = element_blank(), panel.border = element_rect(color = "black", fill = "transparent"), panel.grid = element_blank()) + theme(axis.text = element_text(size =12), axis.title = element_text(size = 16))  + theme(axis.ticks =  element_line(color = "black")) + theme(legend.title = element_blank()) + theme(legend.text = element_text(size = 14), legend.position = "bottom") + geom_errorbar(aes(x = (idx - 0.2), ymax = UB, ymin = LB, group = name), width = 0.15) + xlab("") + ylab("Mutation Rate (%)") + scale_fill_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemio-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2)) + scale_y_continuous(breaks = scales::pretty_breaks(n=5), limits = c(0, 5)) + scale_x_continuous(breaks = df$idx, labels = df$mutation) + scale_color_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemio-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2))
+
+ 
 
 
 #Fig A
@@ -127,7 +130,7 @@ fig1a <- case.df %>% select(cancer, incidence, seq_pct) %>% magrittr::set_colnam
 
 
 
-cowplot::plot_grid(fig1a, fig1b, nrow = 1, rel_widths = c(2.4, 1), labels = c("A", "B"), label_size = 25) %>% ggsave(., filename = file.path(outdir, "fig1.pdf"), height = 8, width = 13, device = cairo_pdf, units = "in")
+cowplot::plot_grid(fig1a, fig1b, nrow = 1, rel_widths = c(2.4, 1), labels = c("A", "B"), label_size = 20) %>% ggsave(., filename = file.path(outdir, "fig1.pdf"), height = 8, width = 13, device = cairo_pdf, units = "in")
 
 
 

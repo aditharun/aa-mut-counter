@@ -49,8 +49,8 @@ def fun_Outdf(inpvec):
     df_Out1=inpvec[1]
     inpdf=inpvec[0]
     for idx,row in inpdf.iterrows():
-        igene=row.Hugo_Symbol
-        imutsite=row.HGVSp
+        igene=str(row.Hugo_Symbol)
+        imutsite=str(row.HGVSp)
         icode=row.CODE
         """
         print("Values:")

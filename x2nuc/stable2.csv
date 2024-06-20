@@ -1,0 +1,20 @@
+name,Arg,Cys,His,Lys,Ser,Thr,Tyr
+Malignant Melanoma,13.99,12.11,7.48,30.49,26.58,7.13,14.5
+Lung Small Cell Carcionoma,2.66,1.48,1.31,1.11,2.2,1.62,1.9
+Urothelial Cancer,3.32,4.35,4.1,8.37,2.69,3.3,4.21
+Hepatocellular Carcinoma,4.11,2.51,2.02,1.84,3.68,3.09,2.75
+Thyroid Carcinoma,0.29,0.25,0.33,0.23,0.3,0.28,0.22
+Head Neck Squamous Cell Carcinoma,3.06,3.13,3.01,3.94,3,2.75,2.89
+Lung Squamous Cell Carcinoma,5.59,4.55,4.14,4.32,5.62,4.03,5.61
+Renal Cell Carcinoma,2.17,1.12,1.55,1.12,1.7,1.79,1.63
+Ovarian Cancer,1.71,1.14,1.15,1.03,1.36,1.26,1.21
+Endometrial Cancer,11.44,15.67,18.18,9.37,10.5,18.84,21.07
+Breast Carcinoma,4,3.98,4.29,5.95,3.18,3.86,3.96
+Prostate Cancer,3.44,3.44,3.9,1.7,2.81,3.82,2.27
+Gastric Adenocarcinoma,7.77,6.9,7.87,2.85,4.62,8.79,3.8
+Lung Adenocarcinoma,8.2,8.1,6.93,6.64,9.22,6.49,10.4
+Colorectal Adenocarcinoma,14.26,19.02,20.02,8.95,10.61,19.5,12.33
+Pancreatic Adenocarcinoma,1.37,1.32,1.68,0.9,1.25,1.64,1.09
+Diffuse_large_B_cell_lymphoma,2.18,1.35,1.52,1.02,1.55,1.79,0.93
+Plasma_cell_myeloma,0.45,0.24,0.28,0.36,0.28,0.34,0.26
+Chronic_lymphocytic_leukemiasmall_lymphocytic_lymphoma,0.53,0.33,0.31,0.25,0.41,0.44,0.26

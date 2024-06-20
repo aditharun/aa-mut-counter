@@ -145,8 +145,12 @@ df_mutfiles=pd.concat(list_mutfile).reset_index(drop=True)
 df_mutfiles.Hugo_Symbol=df_mutfiles.Hugo_Symbol.astype(str).apply(lambda x:x.upper())
 
 # List All genes
+
+#4/16/24 6:55 AM
+#added N/A since there is one N/A in p.Ala820Thr in S00936 missense
+#this does not affect any counts since S00936 tumor sample barcode has 768 other mutations catalogued in df_mutfiles for SCLC_clcgp
 geneset=list(set(df_mutfiles.Hugo_Symbol.values))
-remlist=[' ','Unknown',np.nan,'na','NA','NaN','NAN']
+remlist=[' ','Unknown',np.nan,'na','NA','NaN','NAN', 'N/A']
 for igene in remlist:
     if igene in geneset:
         geneset.remove(igene)
@@ -202,6 +206,7 @@ df_mutfiles['StidSid']=[df_mutfiles.loc[idx,'STUDY_ID']+'_'+df_mutfiles.loc[idx,
 TotalRow=[setlen(df_mutfiles.StidSid.values)]+[setlen(df_mutfiles.StidSid[df_mutfiles.CODE==ihist].values) for ihist in df_Out.columns[1:]]
 df_Out.loc['Total']=TotalRow
 print(TotalRow)
+
 
 
 for item in ['n/a','NAN','NA','na','nan']:
