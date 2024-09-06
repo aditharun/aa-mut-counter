@@ -26,5 +26,22 @@ mut_plot %>% ggsave(., filename = file.path(outdir, "fig3.pdf"), height = 8, wid
 
 no_ci_mut_plot %>% ggsave(., filename = file.path(outdir, "fig3_no_ci.pdf"), height = 8, width = 8, device = cairo_pdf, units = "in")
 
-#0.772 correlation w/ 95% CI: 0.769 to 0.7745, p-value < 2.2e-16
-#spearman: 0.42, p-val < 2.2e-16
+
+
+
+cor.test(mut$pct_tcga, mut$pct_us, method = "pearson")
+cor.test(mut$pct_tcga, mut$pct_us, method = "spearman")
+
+#0.772 correlation w/ 95% CI: 0.769 to 0.774, p-value < 2.2e-16
+#spearman: 0.53, p-val < 2.2e-16
+
+
+
+
+
+
+
+
+
+
+#

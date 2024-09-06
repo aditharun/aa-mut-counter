@@ -29,6 +29,13 @@ seer.df <- "../data/seer-abundances.xlsx" %>% read_excel() %>% magrittr::set_col
 
 all_cases <- "../results/all-muts/all-counts-matrix.txt" %>% read_table() %>% filter(Hugo_Symbol == "Total")
 
+less_than_10_cases <- all_cases[-c(1:2)] %>% t() %>% as.data.frame() %>% filter(V1 < 10) %>% rownames(.)
+
+
+seer.df <- seer.df %>% filter(!rosetta %in% less_than_10_cases)
+all_cases <- all_cases[which(!colnames(all_cases) %in% less_than_10_cases)]
+
+npc_total <- (all_cases[,-c(1:2)] %>% t() %>% as.numeric() %>% sum())
 
 indiv_muts <- "../results/counts-v600-g12c-mutations.txt" %>% read_table()
 
@@ -42,18 +49,15 @@ indiv_muts <- indiv_muts %>% filter(Hugo_Symbol %in% c("BRAFp.Val600Glu", "BRAFp
 
 all_cases_subset <- all_cases %>% select(intersect(colnames(all_cases), colnames(indiv_muts))) %>% relocate(colnames(indiv_muts))
 
+all_cases_subset <- all_cases_subset %>% mutate(All = npc_total)
+
 indiv_muts <- rbind(indiv_muts, all_cases_subset)
 
 indiv_muts_by_rosetta <- indiv_muts %>% filter(Hugo_Symbol == "Total")
 
 indiv_muts.df <- indiv_muts %>% filter(Hugo_Symbol != "Total") %>% select(-All)
 
-total <- indiv_muts_by_rosetta %>% pivot_longer(-c(Hugo_Symbol, All)) %>% left_join(seer.df, by=c("name"="rosetta")) 
-
-total <- total %>% mutate(incidence = incidence / sum(incidence), incidence_frac = incidence_frac / sum(incidence_frac))
-
-total <- total %>% magrittr::set_colnames(c("hugo", "all", "rosetta", "count", "cancer", "incidence", "incidence_frac"))
-
+total <- readRDS(file.path(outdir, "total-inc-frac.rds")) %>% filter(rosetta %in% (indiv_muts.df %>% select(-1) %>% colnames()))
 
 tcga.muts <- indiv_muts.df %>% pivot_longer(-Hugo_Symbol) %>% left_join(total %>% select(-c(count, hugo, all)), by=c("name"="rosetta"))
 
@@ -62,9 +66,12 @@ tcga.muts <- tcga.muts %>% mutate(gene = gsub("\\.(.*)", "", Hugo_Symbol)) %>% m
 tcga.gene <- tcga.muts %>% group_by(gene, cancer) %>% summarize(net_count=sum(count), incidence_frac = unique(incidence_frac), gene = unique(gene), rosetta = unique(rosetta)) %>% select(rosetta, incidence_frac, gene, net_count)
 
 
-tcga.gene <- tcga.gene %>% mutate(weight.gene = incidence_frac * net_count)
-total <- total %>% mutate(weight.tot = incidence_frac * count)
-tcga.muts <- tcga.muts %>% mutate(weight.mut=incidence_frac * count) 
+tcga.muts <- tcga.muts %>% left_join(total %>% select(rosetta, count) %>% magrittr::set_colnames(c("rosetta", "tcount")), by=c("rosetta"="rosetta")) %>% mutate(frac_count = count / tcount)
+
+tcga.gene <- tcga.gene %>% left_join(total %>% select(rosetta, count) %>% magrittr::set_colnames(c("rosetta", "tcount")), by=c("rosetta"="rosetta")) %>% mutate(frac_count = net_count / tcount)
+
+tcga.gene <- tcga.gene %>% mutate(weight.gene = incidence_frac * frac_count)
+tcga.muts <- tcga.muts %>% mutate(weight.mut=incidence_frac * frac_count) 
 
 tcga.muts <- tcga.muts %>% mutate(idx = 1:n())
 tcga.gene <- tcga.gene %>% ungroup() %>% mutate(idx = 1:n())
@@ -78,19 +85,19 @@ tcga.gene.confint <- tcga.gene %>% filter(net_count > 0)  %>% mutate(result = pu
 
 tcga.gene <- tcga.gene %>% left_join(tcga.gene.confint %>% select(idx, lb, ub), by=c("idx"="idx"))
 
-tcga.gene <- tcga.gene %>% mutate(weight.lb = lb * incidence_frac, weight.ub = ub * incidence_frac)
+tcga.gene <- tcga.gene %>% mutate(frac_lb = lb/tcount, frac_ub = ub/tcount, weight.lb = frac_lb * incidence_frac, weight.ub = frac_ub * incidence_frac)
 
-tcga.muts <- tcga.muts %>% mutate(weight.lb = lb * incidence_frac, weight.ub = ub * incidence_frac)
+tcga.muts <- tcga.muts %>% mutate(frac_lb = lb/tcount, frac_ub = ub/tcount, weight.lb = frac_lb * incidence_frac, weight.ub = frac_ub * incidence_frac)
 
 tcga.gene <- tcga.gene %>% mutate(weight.lb = ifelse(is.na(weight.lb), 0, weight.lb), weight.ub = ifelse(is.na(weight.ub), 0, weight.ub))
 
 tcga.muts <- tcga.muts %>% mutate(weight.lb = ifelse(is.na(weight.lb), 0, weight.lb), weight.ub = ifelse(is.na(weight.ub), 0, weight.ub))
 
 
-mut <- tcga.muts %>% left_join(total %>% select(rosetta, weight.tot, all), by=c("rosetta"="rosetta")) %>% group_by(hugo) %>% summarize(gene=unique(gene), pct_us = sum(weight.mut) / sum(weight.tot), pct_tcga = sum(count) / unique(all) , pct_lb = sum(weight.lb) / sum(weight.tot), pct_ub = sum(weight.ub) / sum(weight.tot)) %>% mutate(across(where(is.double), ~ . * 100))
+mut <- tcga.muts %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(hugo) %>% summarize(gene=unique(gene), pct_us = sum(weight.mut), pct_tcga = sum(count) / unique(all) , pct_lb = sum(weight.lb), pct_ub = sum(weight.ub)) %>% mutate(across(where(is.double), ~ . * 100))
 
 
-gene <- tcga.gene %>% left_join(total %>% select(rosetta, weight.tot, all), by=c("rosetta"="rosetta")) %>% group_by(gene) %>% summarize(pct_us = sum(weight.gene) / sum(weight.tot), pct_tcga = sum(net_count) / unique(all), pct_lb = sum(weight.lb) / sum(weight.tot), pct_ub = sum(weight.ub) / sum(weight.tot) ) %>% mutate(across(where(is.double), ~ . * 100))
+gene <- tcga.gene %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(gene) %>% summarize(pct_us = sum(weight.gene), pct_tcga = sum(net_count) / unique(all), pct_lb = sum(weight.lb), pct_ub = sum(weight.ub)) %>% mutate(across(where(is.double), ~ . * 100))
 
 
 df <- mut %>% mutate(gene = str_sub(gene, 1, -2)) %>% mutate(mutation = gsub("(.*)\\.", "", hugo)) %>% relocate(gene, mutation) %>% select(-hugo) %>% mutate(label_text = paste0(gene, "\n(", mutation, ")")) %>% select(-c(gene, mutation))
@@ -102,25 +109,24 @@ df <- df %>% mutate(LB = ifelse(name == "EG", LB, NA), UB = ifelse(name == "EG",
 
 
 
-fig1b <- df %>% ggplot(., aes(fill = name, y = value, color = name, group = name, x = idx)) + geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.8, alpha = 0.65) + theme_minimal() + theme(panel.background = element_blank(), panel.border = element_rect(color = "black", fill = "transparent"), panel.grid = element_blank()) + theme(axis.text = element_text(size =12), axis.title = element_text(size = 16))  + theme(axis.ticks =  element_line(color = "black")) + theme(legend.title = element_blank()) + theme(legend.text = element_text(size = 14), legend.position = "bottom") + geom_errorbar(aes(x = (idx - 0.2), ymax = UB, ymin = LB, group = name), width = 0.15) + xlab("") + ylab("Mutation Rate (%)") + scale_fill_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemio-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2)) + scale_y_continuous(breaks = scales::pretty_breaks(n=5), limits = c(0, 5)) + scale_x_continuous(breaks = df$idx, labels = df$mutation) + scale_color_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemio-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2))
+fig1b <- df %>% ggplot(., aes(fill = name, y = value, color = name, group = name, x = idx)) + geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.8, alpha = 0.65) + theme_minimal() + theme(panel.background = element_blank(), panel.border = element_rect(color = "black", fill = "transparent"), panel.grid = element_blank()) + theme(axis.text = element_text(size =12), axis.title = element_text(size = 16))  + theme(axis.ticks =  element_line(color = "black")) + theme(legend.title = element_blank()) + theme(legend.text = element_text(size = 14), legend.position = "bottom") + geom_errorbar(aes(x = (idx - 0.2), ymax = UB, ymin = LB, group = name), width = 0.15) + xlab("") + ylab("Mutation Rate (%)") + scale_fill_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemio-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2)) + scale_y_continuous(breaks = scales::pretty_breaks(n=6), limits = c(0, 6.1)) + scale_x_continuous(breaks = df$idx, labels = df$mutation) + scale_color_manual(values = c("EG"="maroon", "NPC"="navy"), labels = c("EG"="EG (epidemio-genomic) Rate", "NPC"="NPC (naive pan-cancer) Rate"), guide = guide_legend(nrow = 2))
 
  
 
 
 #Fig A
-total_sequenced_cases <- all_cases$All
-case_counts <- all_cases %>% pivot_longer(-Hugo_Symbol) %>% filter(name != "All")
+total_sequenced_cases <- all_cases_subset$All
+case_counts <- all_cases_subset %>% pivot_longer(-Hugo_Symbol) %>% filter(name != "All")
 
 case.df <- case_counts %>% mutate(seq_frac = value / total_sequenced_cases) %>% left_join(., seer.df %>% select(rosetta, cancer, incidence), by=c("name"="rosetta")) %>% select(name, cancer, incidence, seq_frac) %>% mutate(seq_pct = seq_frac * 100) %>% select(-seq_frac) %>% mutate(diff = abs(incidence - seq_pct)) %>% arrange(desc(diff)) %>% slice(1:20) %>% arrange(desc(incidence))
 
 cancer_names <- case.df %>% pull(cancer)
-cancer_names[12] <- "DLBCL"
-cancer_names[13] <- "CLL/SLL"
-cancer_names[17] <- "Renal Cell Carcinoma (Chromophobe)"
-cancer_names[18] <- "Neuroblastoma (NOS)"
-cancer_names[14] <- "Glioblastoma (NOS)"
-cancer_names[15] <- "AML (NOS)"
-cancer_names[19] <- "Ewing Sarcoma"
+cancer_names[14] <- "DLBCL"
+cancer_names[15] <- "CLL/SLL"
+cancer_names[16] <- "Glioblastoma (NOS)"
+cancer_names[17] <- "AML (NOS)"
+cancer_names[19] <- "B-ALL/B-LBL"
+cancer_names[20] <- "Ewing Sarcoma"
 
 case.df <- case.df %>% mutate(cancer = cancer_names)
 case.df$cancer <- factor(case.df$cancer, levels = case.df$cancer)
