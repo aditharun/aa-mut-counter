@@ -14,7 +14,7 @@ if (!dir.exists(outdir)){
 	dir.create(outdir, recursive = TRUE)
 }
 
-mut <- file.path(outdir, "mut-rates.rds") %>% readRDS()
+mut <- file.path(outdir, "mutation-rates.rds") %>% readRDS()
 
 mut.bar <- mut %>% arrange(desc(pct_us)) %>% slice(1:50) 
 mut.bar <- mut.bar %>% mutate(label_text = paste0(str_sub(gene, 1, -2), " (", gsub("(.*)\\.", "", hugo) %>% str_sub(., 1, -4) %>% str_replace(., "([[:alpha:]])(\\d)", "\\1 \\2"), ")"))

@@ -13,7 +13,7 @@ if (!dir.exists(outdir)){
 }
 
 
-mut <- file.path(outdir, "mut-rates.rds") %>% readRDS()
+mut <- file.path(outdir, "mutation-rates.rds") %>% readRDS()
 
 points_mut <- mut %>% mutate(diff=abs(pct_tcga - pct_us)) %>% arrange(desc(pct_us)) %>% mutate(us_rank = 1:n()) %>% mutate(gene_fix = str_sub(gene, 1, -2), mut_fix = paste0(" (", gsub("(.*)\\.", "", hugo) %>% str_sub(., 1, -4) %>% str_replace(., "([[:alpha:]])(\\d)", "\\1 \\2"), ")")) %>% mutate(label_text = paste0(gene_fix, mut_fix) ) %>% mutate(label = ifelse(us_rank <= 7, label_text, NA)) %>% select(-label_text) %>% filter(!is.na(label)) %>% mutate(position = ifelse(us_rank == 5, "right", "left")) %>% mutate(nx = ifelse(us_rank == 5, -0.02, 0.02)) %>% mutate(ny = ifelse(us_rank == 7, -0.01, 0.02)) %>% mutate(label = ifelse(us_rank == 5, paste0(gene_fix, "\n", mut_fix), label) ) 
 

@@ -17,8 +17,9 @@ amino_acid <- opt$aminoacid
 amino_acid_long <- opt$fullname
 
 system(paste0("Rscript reweighting.R ", amino_acid))
-system(paste0("Rscript create-tables.R ", amino_acid))
+system(paste0("Rscript ci-routine.R ", amino_acid))
 
+system(paste0("Rscript create-tables.R ", amino_acid))
 system(paste0("Rscript fig2.R ", amino_acid, " ", amino_acid_long))
 system(paste0("Rscript fig3.R ", amino_acid))
 system(paste0("Rscript genes-fig.R ", amino_acid))

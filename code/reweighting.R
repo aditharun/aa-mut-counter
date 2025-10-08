@@ -12,22 +12,11 @@ if (!dir.exists(outdir)){
 	dir.create(outdir, recursive = TRUE)
 }
 
-#functions
-#perform confidence interval simulations
-
-conf_int <- function(lambda, n=2000){
-
-	values <- rpois(n=n, lambda=lambda)
-
-	bounds <- quantile(values, c(0.025, 0.975)) %>% unname()
-
-	return(list(lb = bounds[1], ub = bounds[2]))
-
-}
+datadir <- "../data/seer-abundances.xlsx"
 
 #load Seer data
 #same as SuppTable1_ROSETTA_Abundance_added12.xlsx in Stites 2021
-seer.df <- "../data/seer-abundances.xlsx" %>% read_excel() %>% magrittr::set_colnames(c("rosetta", "cancer", "incidence")) %>% mutate(incidence_frac = incidence / 100)
+seer.df <- datadir %>% read_excel() %>% magrittr::set_colnames(c("rosetta", "cancer", "incidence")) %>% mutate(incidence_frac = incidence / 100)
 
 
 #by mutation
@@ -44,11 +33,13 @@ all_cases <- all_cases[which(!colnames(all_cases) %in% less_than_10_cases)]
 aa_tcga <- aa_tcga[which(!colnames(aa_tcga) %in% less_than_10_cases)]
 
 
-#at least 1 x2c mutation
+all_cases %>% select(-2) %>% pivot_longer(-Hugo_Symbol) %>% select(-Hugo_Symbol) %>% left_join(seer.df %>% select(rosetta, cancer), by=c("name"="rosetta")) %>% write_csv(., "../count-per-code.csv")
+
 total_cases <- aa_tcga %>% filter(Hugo_Symbol == "Total")
 
 all_cases_subset <- all_cases %>% select(intersect(colnames(all_cases), colnames(aa_tcga))) %>% relocate(colnames(aa_tcga))
 
+#we use this sum as our total because we threw away < 10 cases
 npc_total <- (all_cases[,-c(1:2)] %>% t() %>% as.numeric() %>% sum())
 
 all_cases_subset <- all_cases_subset %>% mutate(All = npc_total)
@@ -88,7 +79,7 @@ tcga.muts <- aa_tcga.df %>% pivot_longer(-Hugo_Symbol) %>% left_join(total %>% s
 
 tcga.muts <- tcga.muts %>% mutate(gene = gsub("\\.(.*)", "", Hugo_Symbol)) %>% magrittr::set_colnames(c("hugo", "rosetta", "count", "cancer", "incidence", "incidence_frac", "gene"))
 
-tcga.gene <- tcga.muts %>% group_by(gene, cancer) %>% summarize(net_count=sum(count), incidence_frac = unique(incidence_frac), gene = unique(gene), rosetta = unique(rosetta)) %>% select(rosetta, incidence_frac, gene, net_count)
+#tcga.gene <- tcga.muts %>% group_by(gene, cancer) %>% summarize(net_count=sum(count), incidence_frac = unique(incidence_frac), gene = unique(gene), rosetta = unique(rosetta)) %>% select(rosetta, incidence_frac, gene, net_count)
 
 #
 
@@ -96,43 +87,52 @@ tcga.muts <- tcga.muts %>% left_join(total %>% select(rosetta, count) %>% magrit
 
 tcga.muts <- tcga.muts %>% mutate(frac_count = count / tcount)
 
-tcga.gene <- tcga.gene %>% left_join(total %>% select(rosetta, count) %>% magrittr::set_colnames(c("rosetta", "tcount")), by=c("rosetta"="rosetta"))
+#tcga.gene <- tcga.gene %>% left_join(total %>% select(rosetta, count) %>% magrittr::set_colnames(c("rosetta", "tcount")), by=c("rosetta"="rosetta"))
 
-tcga.gene <- tcga.gene %>% mutate(frac_count = net_count / tcount)
+#tcga.gene <- tcga.gene %>% mutate(frac_count = net_count / tcount)
 
-tcga.gene <- tcga.gene %>% mutate(weight.gene = incidence_frac * frac_count)
+#tcga.gene <- tcga.gene %>% mutate(weight.gene = incidence_frac * frac_count)
 tcga.muts <- tcga.muts %>% mutate(weight.mut=incidence_frac * frac_count) 
 
+tcga.muts <- tcga.muts %>% arrange(desc(count))
+#tcga.gene <- tcga.gene %>% arrange(desc(net_count))
+
 tcga.muts <- tcga.muts %>% mutate(idx = 1:n())
-tcga.gene <- tcga.gene %>% ungroup() %>% mutate(idx = 1:n())
+#tcga.gene <- tcga.gene %>% ungroup() %>% mutate(idx = 1:n())
+
+nonzeromut <- tcga.muts %>% filter(count > 0) %>% pull(idx) %>% max()
+#nonzerogene <- tcga.gene %>% filter(net_count > 0) %>% pull(idx) %>% max()
+
+colnames(tcga.muts)[which(colnames(tcga.muts)=="hugo")] <- "id"
+
+#tcga.gene <- tcga.gene %>% magrittr::set_colnames(c("rosetta", "incidence_frac", "id", "count", "tcount", "frac_count", "weight.gene", "idx"))
+
+saveRDS(tcga.muts, file.path(outdir, "tcga-muts.rds"))
 
 
-tcga.muts.confint <- tcga.muts %>% filter(count > 0)  %>% mutate(result = purrr::map(count, conf_int), lb = purrr::map_dbl(result, "lb"), ub = purrr::map_dbl(result, "ub")) %>% select(-result)
-tcga.muts <- tcga.muts %>% left_join(tcga.muts.confint %>% select(idx, lb, ub), by=c("idx"="idx"))
 
+mut <- tcga.muts %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(id) %>% summarize(gene=unique(gene), pct_us = sum(weight.mut), pct_tcga = sum(count) / unique(all)) %>% mutate(across(where(is.double), ~ . * 100))
 
-tcga.gene.confint <- tcga.gene %>% filter(net_count > 0)  %>% mutate(result = purrr::map(net_count, conf_int), lb = purrr::map_dbl(result, "lb"), ub = purrr::map_dbl(result, "ub")) %>% select(-result)
+# %>% left_join(confint.muts, by=c("id"="id")) %>% mutate(across(where(is.double), ~ . * 100))
 
+#gene <- tcga.gene %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(id) %>% summarize(pct_us = sum(weight.gene), pct_tcga = sum(count) / unique(all)) %>% left_join(confint.gene, by=c("id"="id")) 
 
-tcga.gene <- tcga.gene %>% left_join(tcga.gene.confint %>% select(idx, lb, ub), by=c("idx"="idx"))
+colnames(mut)[which(colnames(mut) == "id")] <- "hugo"
+#colnames(gene)[which(colnames(gene) == "id")] <- "gene"
 
-tcga.gene <- tcga.gene %>% mutate(frac_lb = lb/tcount, frac_ub = ub/tcount, weight.lb = frac_lb * incidence_frac, weight.ub = frac_ub * incidence_frac)
+mut$lb <- NA
+mut$ub <- NA
 
-tcga.muts <- tcga.muts %>% mutate(frac_lb = lb/tcount, frac_ub = ub/tcount, weight.lb = frac_lb * incidence_frac, weight.ub = frac_ub * incidence_frac)
+colnames(mut)[which(colnames(mut)=="lb")] <- "pct_lb"
+colnames(mut)[which(colnames(mut)=="ub")] <- "pct_ub"
 
-tcga.gene <- tcga.gene %>% mutate(weight.lb = ifelse(is.na(weight.lb), 0, weight.lb), weight.ub = ifelse(is.na(weight.ub), 0, weight.ub))
-
-tcga.muts <- tcga.muts %>% mutate(weight.lb = ifelse(is.na(weight.lb), 0, weight.lb), weight.ub = ifelse(is.na(weight.ub), 0, weight.ub))
-
-
-mut <- tcga.muts %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(hugo) %>% summarize(gene=unique(gene), pct_us = sum(weight.mut), pct_tcga = sum(count) / unique(all) , pct_lb = sum(weight.lb), pct_ub = sum(weight.ub)) %>% mutate(across(where(is.double), ~ . * 100))
-
-gene <- tcga.gene %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(gene) %>% summarize(pct_us = sum(weight.gene), pct_tcga = sum(net_count) / unique(all), pct_lb = sum(weight.lb), pct_ub = sum(weight.ub)) %>% mutate(across(where(is.double), ~ . * 100))
+#colnames(gene)[which(colnames(gene)=="lb")] <- "pct_lb"
+#colnames(gene)[which(colnames(gene)=="ub")] <- "pct_ub"
 
 saveRDS(mut, file.path(outdir, "mut-rates.rds"))
-saveRDS(gene, file.path(outdir, "gene-rates.rds"))
+#saveRDS(gene, file.path(outdir, "gene-rates.rds"))
 
-
+colnames(tcga.muts)[which(colnames(tcga.muts)=="id")] <- "hugo"
 #which cancers contribute to the mutation rates for each mutation? which cancers have the most mutations of a given type (e.g., kras g12c)
 
 cancer_contr <- tcga.muts %>% select(hugo, rosetta, cancer, incidence, count) %>% distinct() %>% left_join(., total %>% select(cancer, count, rosetta) %>% magrittr::set_colnames(c("cancer", "count_cancer", "rosetta")), by=c("cancer"="cancer", "rosetta"="rosetta"))
@@ -149,6 +149,8 @@ mut_cancer_df <- left_join(ranked_pct_contr, ranked_muts %>% select(pct_us, hugo
 ### WRITE OUT FILE ###
 #for each mutation, in which cancer do we find mutations of this sort?
 mut_cancer_table <- mut_cancer_df %>% ungroup() %>% select(hugo, rosetta, cancer, count, count_cancer, total, pct_us, gene, frac) %>% magrittr::set_colnames(c("mutation", "rosetta", "cancer", "count_mutation_for_given_rosetta", "total_cancer_sequenced_cases", "total_mutation_for_mutation_across_rosetta", "informed_rate", "gene", "frac")) %>% mutate(cancer = str_replace_all(cancer, "_", " ")) %>% mutate(gene_fix = str_sub(gene, 1, -2), mut_fix = paste0(" (", gsub("(.*)\\.", "", mutation) %>% str_sub(., 1, -4) %>% str_replace(., "([[:alpha:]])(\\d)", "\\1 \\2"), ")")) %>% mutate(label_text = paste0(gene_fix, mut_fix) ) %>% select(-c(mutation, gene_fix, mut_fix))
+
+mut_cancer_table <- mut_cancer_table %>% mutate(cancer = ifelse(cancer == "Lung Small Cell Carcionoma", "Lung Small Cell Carcinoma", cancer))
 
 saveRDS(mut_cancer_table, file.path(outdir, "mut-cancer-contributions.rds"))
 

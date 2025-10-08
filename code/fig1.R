@@ -12,18 +12,7 @@ if (!dir.exists(outdir)){
 	dir.create(outdir, recursive = TRUE)
 }
 
-#functions
-#perform confidence interval simulations
 
-conf_int <- function(lambda, n=2000){
-
-	values <- rpois(n=n, lambda=lambda)
-
-	bounds <- quantile(values, c(0.025, 0.975)) %>% unname()
-
-	return(list(lb = bounds[1], ub = bounds[2]))
-
-}
 
 seer.df <- "../data/seer-abundances.xlsx" %>% read_excel() %>% magrittr::set_colnames(c("rosetta", "cancer", "incidence")) %>% mutate(incidence_frac = incidence / 100)
 
@@ -77,27 +66,31 @@ tcga.muts <- tcga.muts %>% mutate(idx = 1:n())
 tcga.gene <- tcga.gene %>% ungroup() %>% mutate(idx = 1:n())
 
 
-tcga.muts.confint <- tcga.muts %>% filter(count > 0)  %>% mutate(result = purrr::map(count, conf_int), lb = purrr::map_dbl(result, "lb"), ub = purrr::map_dbl(result, "ub")) %>% select(-result)
-tcga.muts <- tcga.muts %>% left_join(tcga.muts.confint %>% select(idx, lb, ub), by=c("idx"="idx"))
+outdir <- "../analyses/special"
+if (!dir.exists(outdir2)){
+	dir.create(outdir2, recursive = TRUE)
+}
+
+saveRDS(object = tcga.muts, file = "../analyses/special/tcga-muts.rds")
+saveRDS(object = readRDS("../analyses/Cys/quanum.csv"), file = "../analyses/special/quanum.csv")
 
 
-tcga.gene.confint <- tcga.gene %>% filter(net_count > 0)  %>% mutate(result = purrr::map(net_count, conf_int), lb = purrr::map_dbl(result, "lb"), ub = purrr::map_dbl(result, "ub")) %>% select(-result)
-
-tcga.gene <- tcga.gene %>% left_join(tcga.gene.confint %>% select(idx, lb, ub), by=c("idx"="idx"))
-
-tcga.gene <- tcga.gene %>% mutate(frac_lb = lb/tcount, frac_ub = ub/tcount, weight.lb = frac_lb * incidence_frac, weight.ub = frac_ub * incidence_frac)
-
-tcga.muts <- tcga.muts %>% mutate(frac_lb = lb/tcount, frac_ub = ub/tcount, weight.lb = frac_lb * incidence_frac, weight.ub = frac_ub * incidence_frac)
-
-tcga.gene <- tcga.gene %>% mutate(weight.lb = ifelse(is.na(weight.lb), 0, weight.lb), weight.ub = ifelse(is.na(weight.ub), 0, weight.ub))
-
-tcga.muts <- tcga.muts %>% mutate(weight.lb = ifelse(is.na(weight.lb), 0, weight.lb), weight.ub = ifelse(is.na(weight.ub), 0, weight.ub))
+mut <- tcga.muts %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(hugo) %>% summarize(gene=unique(gene), pct_us = sum(weight.mut), pct_tcga = sum(count) / unique(all) , pct_lb = NA, pct_ub = NA) %>% mutate(across(where(is.double), ~ . * 100))
 
 
-mut <- tcga.muts %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(hugo) %>% summarize(gene=unique(gene), pct_us = sum(weight.mut), pct_tcga = sum(count) / unique(all) , pct_lb = sum(weight.lb), pct_ub = sum(weight.ub)) %>% mutate(across(where(is.double), ~ . * 100))
+### compute confidence intervals
 
+system("python3 generate-ci.py special")
 
-gene <- tcga.gene %>% left_join(total %>% select(rosetta, all), by=c("rosetta"="rosetta")) %>% group_by(gene) %>% summarize(pct_us = sum(weight.gene), pct_tcga = sum(net_count) / unique(all), pct_lb = sum(weight.lb), pct_ub = sum(weight.ub)) %>% mutate(across(where(is.double), ~ . * 100))
+ci <- "../analyses/special/main-ci.csv" %>% read_csv(., col_names = FALSE)
+
+colnames(ci) <- c("hugo", "lb", "ub")
+
+ci <- ci %>% mutate(pct_lb = lb*100, pct_ub = ub*100) %>% select(-c(ub, lb))
+
+df <- mut %>% left_join(ci, by=c("hugo"="hugo"))
+
+###
 
 
 df <- mut %>% mutate(gene = str_sub(gene, 1, -2)) %>% mutate(mutation = gsub("(.*)\\.", "", hugo)) %>% relocate(gene, mutation) %>% select(-hugo) %>% mutate(label_text = paste0(gene, "\n(", mutation, ")")) %>% select(-c(gene, mutation))

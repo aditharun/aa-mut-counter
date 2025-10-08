@@ -1,0 +1,66 @@
+name,value,cancer
+70017,61,Seminoma
+70027,49,Sarcoma
+70037,43,Rhabdomyosarcoma
+70047,46,Paraganglioma
+70057,171,Oligodendroma
+70067,102,Mesothelioma
+70077,280,Medulloblastoma
+70087,182,Astrocytoma
+70097,106,Uveal Melanoma
+70107,714,Malignant Melanoma
+70117,126,Pancreatic Neuroendocrine Tumor
+70137,156,Lung Small Cell Carcionoma
+70157,132,Carcinoma of the Thymus
+70167,589,Urothelial Cancer
+70187,842,Hepatocellular Carcinoma
+70197,483,Thyroid Carcinoma
+70207,704,Head Neck Squamous Cell Carcinoma
+70217,320,Esophageal Squamous Cell Carcinoma
+70227,232,Cervical Squamous Cell Carcinoma
+70237,484,Lung Squamous Cell Carcinoma
+70247,15,Vulval Squamous Cell Carcinoma
+70267,104,Salivary Adenoid Cystic Carcinoma
+70277,746,Renal Cell Carcinoma
+70287,409,Ovarian Cancer
+70297,533,Endometrial Cancer
+70307,43,Cervical Carcinoma
+70317,1666,Breast Carcinoma
+70327,1523,Prostate Cancer
+70337,87,Esophageal Adenocarcinoma
+70347,662,Gastric Adenocarcinoma
+70357,799,Lung Adenocarcinoma
+70367,1216,Colorectal Adenocarcinoma
+70377,32,Gallbladder Cancer
+70387,689,Pancreatic Adenocarcinoma
+70397,25,Acinar Cell Carcinoma of the Pancreas
+70517,10,Synovial Sarcoma
+70537,150,B lymphoblastic leukemia or lymphoma
+70607,25,Fibromatous Neoplasms
+70627,48,Lipomatous neoplasms
+70637,91,Myomatous neoplasms
+81603,91,Cholangiocarcinoma
+83173,284,Renal_cell_carcinoma_chromophobe_type
+83703,91,Adrenal_cortical_carcinoma
+87443,40,Acral_lentiginous_melanoma_malignant
+89503,47,Mullerian_mixed_tumor
+89603,99,Nephroblastoma_NOS
+89633,69,Malignant_rhabdoid_tumor
+90703,27,Embryonal_carcinoma_NOS
+90853,25,Mixed_germ_cell_tumor
+91203,36,Hemangiosarcoma
+92603,211,Ewing_sarcoma
+93823,120,Mixed_glioma
+94213,72,Pilocytic_astrocytoma_malignant
+94403,388,Glioblastoma_NOS
+95003,264,Neuroblastoma_NOS
+95403,23,Malignant_peripheral_nerve_sheath_tumor
+96733,29,Mantle_cell_lymphoma
+96803,1260,Diffuse_large_B_cell_lymphoma
+97013,26,Sezary_syndrome
+97093,12,Primary_cutaneous_T_cell_lymphoma
+97323,204,Plasma_cell_myeloma
+98233,716,Chronic_lymphocytic_leukemiasmall_lymphocytic_lymphoma
+98353,73,Precursor_cell_lymphoblastic_leukemia_NOS
+98613,317,Acute_myeloid_leukemia_NOS
+99893,17,Myelodysplastic_syndrome_unclassifiable
